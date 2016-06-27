@@ -4,6 +4,7 @@ var partials = require('express-partials');
 var session = require('express-session');
 var bodyParser = require('body-parser');
 var morgan = require('morgan');
+var bcrypt = require('bcrypt'); 
 
 
 var db = require('./app/config');
@@ -66,16 +67,49 @@ function(req, res) {
   }
 });
 
+app.get('/signup',
+function(req, res) {
+  if (req.session.user) {
+    res.redirect('/');
+  } else {
+    res.render('signup');
+  }
+});
+
+app.post('/signup',
+function(req, res) {
+  console.log(req.body.username);
+  console.log(req.body.password);
+
+  var user = new User({
+    username: req.body.username,
+    password: req.body.password
+  });
+
+  user.save().then(function() {
+    req.session.user = req.body.username;
+    res.redirect('/');
+  });
+});
+
 app.post('/login',
 function(req, res) {
-  //some stuff here
+  var username = req.body.username;
+
+  new User({ username: username }).fetch().then(function(found) {
+    if (found) {
+      req.session.regenerate(function() {
+        req.session.user = req.body.username;
+        res.redirect('/');
+      });
+    } else {
+      res.redirect('/login');
+    }
+  });
 });
 
 app.post('/links',
 function(req, res) {
-  // if (!req.session.user) {
-  //   res.redirect('login');
-  // }
   var uri = req.body.url;
 
   if (!util.isValidUrl(uri)) {
@@ -114,16 +148,16 @@ function(req, res) {
 
 // do stuff here
 
-function authorize(req, res, next) {
-  if(req.session.user) {
-    next();
-  }else {
-    req.session.error = "Access denied!";
-    res.redirect('/login')
-  }
-  // where is each user's session
-
-};
+// function authorize(req, res, next) {
+//   if(req.session.user) {
+//     next();
+//   }else {
+//     req.session.error = "Access denied!";
+//     res.redirect('/login')
+//   }
+//   // where is each user's session
+//
+// };
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail

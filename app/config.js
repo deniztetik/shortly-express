@@ -40,6 +40,20 @@ db.schema.hasTable('clicks').then(function(exists) {
   }
 });
 
+db.schema.hasTable('users').then(function(exists) {
+  if(!exists) {
+    db.schema.createTable('users', function(user) {
+      user.increments('id').primary();
+      user.string('username',100);
+      user.string('password',100);
+      user.string('email',100);
+      user.timestamps();
+    }).then(function(table) {
+      console.log("Created Table", table);
+    });
+  }
+});
+
 /************************************************************/
 // Add additional schema definitions below
 /************************************************************/
