@@ -1,6 +1,7 @@
 var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
+var session = require('express-session');
 var bodyParser = require('body-parser');
 var morgan = require('morgan');
 
@@ -21,29 +22,60 @@ app.use(partials());
 app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(session({
+  secret: 'blue flamingo'
+}));
+
 app.use(morgan('dev'));
 app.use(express.static(__dirname + '/public'));
 
 
 app.get('/',
 function(req, res) {
-  res.render('index');
+  console.log(req.session)
+  if (req.session.user) {
+    res.render('index');
+  } else {
+    res.redirect('login');
+  }
+});
+
+app.get('/login',
+function(req, res) {
+  res.render('login');
 });
 
 app.get('/create',
 function(req, res) {
-  res.render('index');
+  if(!req.session.user) {
+    res.redirect('/login');
+  } else {
+    res.render('create');
+  }
 });
 
 app.get('/links',
 function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
-  });
+  if(!req.session.user) {
+    res.redirect('/login');
+  }else {
+    Links.reset().fetch().then(function(links) {
+      res.send(200, links.models);
+    });
+  }
+});
+
+app.post('/login',
+function(req, res) {
+  //some stuff here
 });
 
 app.post('/links',
 function(req, res) {
+  // if (!req.session.user) {
+  //   res.redirect('login');
+  // }
   var uri = req.body.url;
 
   if (!util.isValidUrl(uri)) {
@@ -81,6 +113,17 @@ function(req, res) {
 /************************************************************/
 
 // do stuff here
+
+function authorize(req, res, next) {
+  if(req.session.user) {
+    next();
+  }else {
+    req.session.error = "Access denied!";
+    res.redirect('/login')
+  }
+  // where is each user's session
+
+};
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
