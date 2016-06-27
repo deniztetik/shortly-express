@@ -44,5 +44,6 @@ db.schema.hasTable('clicks').then(function(exists) {
 // Add additional schema definitions below
 /************************************************************/
 
+//need to add more schema here
 var Bookshelf = require('bookshelf')(db);
 module.exports = Bookshelf;
