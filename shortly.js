@@ -4,7 +4,7 @@ var partials = require('express-partials');
 var session = require('express-session');
 var bodyParser = require('body-parser');
 var morgan = require('morgan');
-var bcrypt = require('bcrypt'); 
+var bcrypt = require('bcrypt-nodejs');
 
 
 var db = require('./app/config');
@@ -34,7 +34,6 @@ app.use(express.static(__dirname + '/public'));
 
 app.get('/',
 function(req, res) {
-  console.log(req.session)
   if (req.session.user) {
     res.render('index');
   } else {
@@ -45,6 +44,14 @@ function(req, res) {
 app.get('/login',
 function(req, res) {
   res.render('login');
+});
+
+app.get('/logout',
+function(req, res){
+  console.log("got here");
+  req.session.regenerate(function() {
+    res.redirect('/');
+  });
 });
 
 app.get('/create',
@@ -78,30 +85,42 @@ function(req, res) {
 
 app.post('/signup',
 function(req, res) {
-  console.log(req.body.username);
-  console.log(req.body.password);
+  var username = req.body.username;
+  var password = req.body.password;
 
-  var user = new User({
-    username: req.body.username,
-    password: req.body.password
-  });
+  bcrypt.genSalt(10,function(err, salt) {
+    bcrypt.hash(password, salt, null, function(err, hash) {
+      var user = new User({
+        username: username,
+        password: hash
+      });
 
-  user.save().then(function() {
-    req.session.user = req.body.username;
-    res.redirect('/');
+      user.save().then(function() {
+        req.session.user = req.body.username;
+        res.redirect('/');
+      });
+    });
   });
 });
 
 app.post('/login',
 function(req, res) {
   var username = req.body.username;
+  var password = req.body.password;
 
-  new User({ username: username }).fetch().then(function(found) {
-    if (found) {
-      req.session.regenerate(function() {
-        req.session.user = req.body.username;
-        res.redirect('/');
-      });
+  new User({ username: username }).fetch().then(function(user) {
+    if (user) {
+      var hash = user.get('password');
+      bcrypt.compare(password, hash, function(err, result) {
+        if(result === true) {
+          req.session.regenerate(function() {
+            req.session.user = req.body.username;
+            res.redirect('/');
+          });
+        }else {
+          res.redirect('/login');
+        }
+      })
     } else {
       res.redirect('/login');
     }
