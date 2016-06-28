@@ -6,6 +6,8 @@ var bodyParser = require('body-parser');
 var morgan = require('morgan');
 var bcrypt = require('bcrypt-nodejs');
 
+var passport = require('passport')
+  , FacebookStrategy = require('passport-facebook').Strategy;
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -27,6 +29,54 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({
   secret: 'blue flamingo'
 }));
+
+//    PASSPORT
+
+passport.serializeUser(function(user, done) {
+  done(null, user.id);
+});
+
+passport.deserializeUser(function(id, done) {
+  User.findById(id, function(err, user) {
+    done(err, user);
+  });
+});
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(new FacebookStrategy({
+    clientID: "135792206845988",
+    clientSecret: "bade9e1a92c06d6b1d7b5beea9315699",
+    callbackURL: "http://localhost:4568/auth/facebook/callback"
+  },
+  function(accessToken, refreshToken, profile, done) {
+    console.log("this is done", done);
+    console.log("this is the profile", profile);
+    if(profile) {
+      req.session.regenerate(function() {
+        req.session.user = profile.id;
+        res.redirect('/');
+      });
+    }else {
+      res.redirect('/login');
+    }
+  }
+));
+
+
+app.get('/auth/facebook',
+  passport.authenticate('facebook'));
+
+app.get('/auth/facebook/callback',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/');
+  });
+
+
+// FACEBOOK PASSPORT
 
 app.use(morgan('dev'));
 app.use(express.static(__dirname + '/public'));
